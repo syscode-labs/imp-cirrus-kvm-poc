@@ -10,12 +10,23 @@ firecracker_probe_task:
 
   setup_script:
     - apt-get update
-    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl tar jq busybox-static cpio
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl tar jq busybox-static cpio python3-pip
 
   probe_script:
     - set -euxo pipefail
     - uname -a
     - id
+    - |
+      RANGE=""
+      if [ -n "${CIRRUS_BASE_SHA:-}" ]; then
+        RANGE="${CIRRUS_BASE_SHA}..${CIRRUS_CHANGE_IN_REPO:-HEAD}"
+      elif git rev-parse HEAD~1 >/dev/null 2>&1; then
+        RANGE="HEAD~1..HEAD"
+      fi
+      if [ -n "$RANGE" ]; then
+        python3 -m pip install --break-system-packages --quiet commitizen
+        python3 -m commitizen check --rev-range "$RANGE"
+      fi
     - ls -l /dev/kvm
     - test -r /dev/kvm
     - test -w /dev/kvm
