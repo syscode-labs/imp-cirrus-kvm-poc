@@ -130,6 +130,7 @@ runtime_real_template_task:
   setup_script:
     - apt-get update
     - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git jq golang-go
+    - curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
   runtime_script:
     - set -euxo pipefail
