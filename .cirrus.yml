@@ -1,6 +1,42 @@
 task:
-  name: KVM Probe (placeholder)
+  name: KVM + Firecracker Probe
+  timeout_in: 20m
+
   container:
-    image: alpine:3.21
-  script:
-    - echo "replace with VM task + /dev/kvm checks"
+    image: ubuntu:24.04
+    kvm: true
+    cpu: 2
+    memory: 4G
+
+  setup_script:
+    - apt-get update
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl tar jq
+
+  probe_script:
+    - set -euxo pipefail
+    - uname -a
+    - id
+    - ls -l /dev/kvm
+    - test -r /dev/kvm
+    - test -w /dev/kvm
+    - ARCH="$(uname -m)"
+    - |
+      case "$ARCH" in
+        x86_64) FC_ARCH="x86_64" ;;
+        aarch64|arm64) FC_ARCH="aarch64" ;;
+        *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+      esac
+    - FC_VERSION="v1.9.0"
+    - FC_TGZ="firecracker-${FC_VERSION}-${FC_ARCH}.tgz"
+    - FC_URL="https://github.com/firecracker-microvm/firecracker/releases/download/${FC_VERSION}/${FC_TGZ}"
+    - curl -fsSL "$FC_URL" -o /tmp/firecracker.tgz
+    - tar -xzf /tmp/firecracker.tgz -C /tmp
+    - FC_DIR="/tmp/release-${FC_VERSION}-${FC_ARCH}"
+    - install -m 0755 "${FC_DIR}/firecracker-${FC_VERSION}-${FC_ARCH}" /usr/local/bin/firecracker
+    - install -m 0755 "${FC_DIR}/jailer-${FC_VERSION}-${FC_ARCH}" /usr/local/bin/jailer
+    - firecracker --version
+    - jailer --version
+
+  always:
+    env_artifacts:
+      path: /proc/cpuinfo
