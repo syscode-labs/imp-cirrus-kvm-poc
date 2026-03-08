@@ -133,7 +133,7 @@ runtime_real_template_task:
 
   runtime_script:
     - set -euxo pipefail
-    - echo "RUN_RUNTIME_REAL=$RUN_RUNTIME_REAL"
+    - echo "RUN_RUNTIME_REAL="
     - echo "IMP_REPO=$IMP_REPO IMP_REF=$IMP_REF"
     - echo "EXT_REPO=$EXT_REPO EXT_REF=$EXT_REF"
     - echo "E2E_LABEL_FILTER=$E2E_LABEL_FILTER"
