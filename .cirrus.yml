@@ -3,14 +3,10 @@ firecracker_probe_task:
   timeout_in: 30m
 
   container:
-    image: ubuntu:24.04
+    image: ghcr.io/syscode-labs/imp-cirrus-runtime-base:latest
     kvm: true
     cpu: 2
     memory: 4G
-
-  setup_script:
-    - apt-get update
-    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl tar jq busybox-static cpio python3-pip
 
   probe_script:
     - set -euxo pipefail
@@ -115,7 +111,7 @@ runtime_real_template_task:
   timeout_in: 120m
 
   container:
-    image: ubuntu:24.04
+    image: ghcr.io/syscode-labs/imp-cirrus-runtime-base:latest
     kvm: true
     cpu: 4
     memory: 8G
@@ -126,11 +122,6 @@ runtime_real_template_task:
     EXT_REPO: https://github.com/syscode-labs/talos-ext-firecracker.git
     EXT_REF: main
     E2E_LABEL_FILTER: smoke
-
-  setup_script:
-    - apt-get update
-    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git jq golang-go
-    - curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
   runtime_script:
     - set -euxo pipefail

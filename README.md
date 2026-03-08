@@ -13,6 +13,25 @@ Bridge repo for Cirrus jobs that need KVM-capable public runners.
   - Clones `imp` and `talos-ext-firecracker` at refs passed via env.
   - Delegates Talos+extension provisioning and runtime-real e2e execution to scripts in `talos-ext-firecracker` (source of truth).
 
+## Base Image Cache
+
+Cirrus tasks use a prebuilt GHCR image to avoid repeated package installs:
+
+- `ghcr.io/syscode-labs/imp-cirrus-runtime-base:latest`
+
+Image source is in this repo:
+
+- `ci/images/runtime-base/Dockerfile`
+
+Publish workflow:
+
+- `.github/workflows/publish-runtime-base-image.yml`
+
+The workflow pushes tags:
+
+- `latest` (default branch)
+- `sha-<commit>`
+
 ## Runtime Template Contract
 
 The extension repo must provide executable scripts:
