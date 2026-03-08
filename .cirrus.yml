@@ -19,7 +19,6 @@ task:
     - ls -l /dev/kvm
     - test -r /dev/kvm
     - test -w /dev/kvm
-    - cp /proc/cpuinfo ./cpuinfo.txt
 
     - ARCH="$(uname -m)"
     - |
@@ -98,14 +97,3 @@ task:
 
     - kill "$FC_PID" || true
     - wait "$FC_PID" || true
-
-    - cp /tmp/firecracker.stdout ./firecracker.stdout
-    - cp /tmp/firecracker.stderr ./firecracker.stderr
-
-  always:
-    artifacts:
-      path: .
-      include:
-        - cpuinfo.txt
-        - firecracker.stdout
-        - firecracker.stderr
