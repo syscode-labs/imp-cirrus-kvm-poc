@@ -13,24 +13,38 @@ Bridge repo for Cirrus jobs that need KVM-capable public runners.
   - Clones `imp` and `talos-ext-firecracker` at refs passed via env.
   - Delegates Talos+extension provisioning and runtime-real e2e execution to scripts in `talos-ext-firecracker` (source of truth).
 
+## Configuration-First Build Flow
+
+This repo uses tool-native configuration (not ad-hoc orchestration scripts) for base image build/publish:
+
+- Image definition: `ci/images/runtime-base/Dockerfile`
+- Publish workflow: `.github/workflows/publish-runtime-base-image.yml`
+- Runtime consumption in Cirrus: `.cirrus.yml`
+
+Publishing is done with official Docker GitHub Actions:
+
+- `docker/setup-buildx-action`
+- `docker/login-action`
+- `docker/metadata-action`
+- `docker/build-push-action`
+
 ## Base Image Cache
 
 Cirrus tasks use a prebuilt GHCR image to avoid repeated package installs:
 
 - `ghcr.io/syscode-labs/imp-cirrus-runtime-base:latest`
 
-Image source is in this repo:
-
-- `ci/images/runtime-base/Dockerfile`
-
-Publish workflow:
-
-- `.github/workflows/publish-runtime-base-image.yml`
-
-The workflow pushes tags:
+The publish workflow pushes:
 
 - `latest` (default branch)
 - `sha-<commit>`
+
+## Updating the Base Image
+
+1. Edit `ci/images/runtime-base/Dockerfile`
+2. Push to `main` (or trigger `Publish Runtime Base Image` manually)
+3. Wait for publish workflow success in GitHub Actions
+4. Cirrus tasks on new commits pull updated `latest`
 
 ## Runtime Template Contract
 
