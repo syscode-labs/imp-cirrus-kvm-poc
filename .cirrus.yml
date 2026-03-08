@@ -1,4 +1,4 @@
-task:
+firecracker_probe_task:
   name: Firecracker VM Command Probe (KVM)
   timeout_in: 30m
 
@@ -97,3 +97,59 @@ task:
 
     - kill "$FC_PID" || true
     - wait "$FC_PID" || true
+
+runtime_real_template_task:
+  name: Runtime-Real Template (Talos + ext + imp e2e)
+  only_if: $RUN_RUNTIME_REAL == "true"
+  timeout_in: 120m
+
+  container:
+    image: ubuntu:24.04
+    kvm: true
+    cpu: 4
+    memory: 8G
+
+  env:
+    IMP_REPO: https://github.com/syscode-labs/imp.git
+    IMP_REF: main
+    EXT_REPO: https://github.com/syscode-labs/talos-ext-firecracker.git
+    EXT_REF: main
+    E2E_LABEL_FILTER: runtime-real
+
+  setup_script:
+    - apt-get update
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git jq
+
+  runtime_script:
+    - set -euxo pipefail
+    - echo "RUN_RUNTIME_REAL=$RUN_RUNTIME_REAL"
+    - echo "IMP_REPO=$IMP_REPO IMP_REF=$IMP_REF"
+    - echo "EXT_REPO=$EXT_REPO EXT_REF=$EXT_REF"
+    - echo "E2E_LABEL_FILTER=$E2E_LABEL_FILTER"
+
+    - git clone "$IMP_REPO" /tmp/imp
+    - git -C /tmp/imp checkout "$IMP_REF"
+
+    - git clone "$EXT_REPO" /tmp/talos-ext-firecracker
+    - git -C /tmp/talos-ext-firecracker checkout "$EXT_REF"
+
+    - |
+      if [ ! -x /tmp/talos-ext-firecracker/scripts/ci/provision-talos-with-extension.sh ]; then
+        echo "Missing required extension SOT script: scripts/ci/provision-talos-with-extension.sh"
+        echo "Expected contract: script provisions Talos cluster with extension, exports kubeconfig usable by e2e tests."
+        exit 2
+      fi
+
+    - |
+      /tmp/talos-ext-firecracker/scripts/ci/provision-talos-with-extension.sh
+
+    - |
+      if [ ! -x /tmp/talos-ext-firecracker/scripts/ci/run-imp-e2e-runtime-real.sh ]; then
+        echo "Missing required extension SOT script: scripts/ci/run-imp-e2e-runtime-real.sh"
+        echo "Expected contract: script runs imp e2e runtime-real against the provisioned Talos cluster."
+        exit 2
+      fi
+
+    - |
+      IMP_REPO_DIR=/tmp/imp E2E_LABEL_FILTER="$E2E_LABEL_FILTER" \
+        /tmp/talos-ext-firecracker/scripts/ci/run-imp-e2e-runtime-real.sh
