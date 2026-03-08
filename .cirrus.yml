@@ -129,7 +129,7 @@ runtime_real_template_task:
 
   setup_script:
     - apt-get update
-    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git jq
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git jq golang-go
 
   runtime_script:
     - set -euxo pipefail
