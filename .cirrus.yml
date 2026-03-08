@@ -19,6 +19,7 @@ task:
     - ls -l /dev/kvm
     - test -r /dev/kvm
     - test -w /dev/kvm
+    - cp /proc/cpuinfo ./cpuinfo.txt
     - ARCH="$(uname -m)"
     - |
       case "$ARCH" in
@@ -38,5 +39,5 @@ task:
     - jailer --version
 
   always:
-    env_artifacts:
-      path: /proc/cpuinfo
+    artifacts:
+      path: cpuinfo.txt
