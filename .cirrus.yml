@@ -111,7 +111,7 @@ firecracker_probe_task:
 
 runtime_real_template_task:
   name: Runtime-Real Template (Talos + ext + imp e2e)
-  only_if: $RUN_RUNTIME_REAL == "true"
+  only_if: true
   timeout_in: 120m
 
   container:
@@ -125,7 +125,7 @@ runtime_real_template_task:
     IMP_REF: main
     EXT_REPO: https://github.com/syscode-labs/talos-ext-firecracker.git
     EXT_REF: main
-    E2E_LABEL_FILTER: runtime-real
+    E2E_LABEL_FILTER: smoke
 
   setup_script:
     - apt-get update
