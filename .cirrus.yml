@@ -144,6 +144,8 @@ runtime_real_template_task:
     - git clone "$EXT_REPO" /tmp/talos-ext-firecracker
     - git -C /tmp/talos-ext-firecracker checkout "$EXT_REF"
 
+    - grep -n "docker build" /tmp/talos-ext-firecracker/scripts/ci/provision-talos-with-extension.sh || true
+
     - |
       if [ ! -x /tmp/talos-ext-firecracker/scripts/ci/provision-talos-with-extension.sh ]; then
         echo "Missing required extension SOT script: scripts/ci/provision-talos-with-extension.sh"
