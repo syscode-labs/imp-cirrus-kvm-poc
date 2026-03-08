@@ -1,6 +1,6 @@
 task:
-  name: KVM + Firecracker Probe
-  timeout_in: 20m
+  name: Firecracker VM Command Probe (KVM)
+  timeout_in: 30m
 
   container:
     image: ubuntu:24.04
@@ -10,7 +10,7 @@ task:
 
   setup_script:
     - apt-get update
-    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl tar jq
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl tar jq busybox-static cpio
 
   probe_script:
     - set -euxo pipefail
@@ -20,13 +20,15 @@ task:
     - test -r /dev/kvm
     - test -w /dev/kvm
     - cp /proc/cpuinfo ./cpuinfo.txt
+
     - ARCH="$(uname -m)"
     - |
       case "$ARCH" in
-        x86_64) FC_ARCH="x86_64" ;;
-        aarch64|arm64) FC_ARCH="aarch64" ;;
+        x86_64) FC_ARCH="x86_64" ; KERNEL_URL="https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin" ;;
+        aarch64|arm64) FC_ARCH="aarch64" ; KERNEL_URL="https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/aarch64/kernels/vmlinux.bin" ;;
         *) echo "Unsupported arch: $ARCH"; exit 1 ;;
       esac
+
     - FC_VERSION="v1.9.0"
     - FC_TGZ="firecracker-${FC_VERSION}-${FC_ARCH}.tgz"
     - FC_URL="https://github.com/firecracker-microvm/firecracker/releases/download/${FC_VERSION}/${FC_TGZ}"
@@ -38,6 +40,72 @@ task:
     - firecracker --version
     - jailer --version
 
+    - curl -fsSL "$KERNEL_URL" -o /tmp/vmlinux.bin
+
+    - mkdir -p /tmp/initramfs/bin /tmp/initramfs/proc /tmp/initramfs/sys /tmp/initramfs/dev
+    - cp /bin/busybox /tmp/initramfs/bin/busybox
+    - |
+      cat > /tmp/initramfs/init <<'SH'
+      #!/bin/busybox sh
+      mount -t proc none /proc
+      mount -t sysfs none /sys
+      echo CIRRUS_VM_CMD_OK
+      /bin/busybox uname -a
+      /bin/busybox poweroff -f
+      SH
+    - chmod +x /tmp/initramfs/init
+    - (cd /tmp/initramfs && find . -print0 | cpio --null -ov --format=newc | gzip -9 > /tmp/initramfs.cpio.gz)
+
+    - SOCK=/tmp/firecracker.socket
+    - rm -f "$SOCK" /tmp/firecracker.stdout /tmp/firecracker.stderr
+    - firecracker --api-sock "$SOCK" > /tmp/firecracker.stdout 2> /tmp/firecracker.stderr &
+    - FC_PID=$!
+    - for i in $(seq 1 50); do [ -S "$SOCK" ] && break; sleep 0.1; done
+    - test -S "$SOCK"
+
+    - |
+      curl --fail --silent --show-error --unix-socket "$SOCK" \
+        -X PUT 'http://localhost/machine-config' \
+        -H 'Content-Type: application/json' \
+        -d '{"vcpu_count":1,"mem_size_mib":256,"smt":false}'
+
+    - |
+      curl --fail --silent --show-error --unix-socket "$SOCK" \
+        -X PUT 'http://localhost/boot-source' \
+        -H 'Content-Type: application/json' \
+        -d '{"kernel_image_path":"/tmp/vmlinux.bin","initrd_path":"/tmp/initramfs.cpio.gz","boot_args":"console=ttyS0 reboot=k panic=1 pci=off"}'
+
+    - |
+      curl --fail --silent --show-error --unix-socket "$SOCK" \
+        -X PUT 'http://localhost/actions' \
+        -H 'Content-Type: application/json' \
+        -d '{"action_type":"InstanceStart"}'
+
+    - |
+      for i in $(seq 1 120); do
+        if grep -q "CIRRUS_VM_CMD_OK" /tmp/firecracker.stdout; then
+          echo "Guest command marker found"
+          break
+        fi
+        if ! kill -0 "$FC_PID" 2>/dev/null; then
+          echo "Firecracker exited before marker"
+          break
+        fi
+        sleep 0.5
+      done
+
+    - grep -q "CIRRUS_VM_CMD_OK" /tmp/firecracker.stdout
+
+    - kill "$FC_PID" || true
+    - wait "$FC_PID" || true
+
+    - cp /tmp/firecracker.stdout ./firecracker.stdout
+    - cp /tmp/firecracker.stderr ./firecracker.stderr
+
   always:
     artifacts:
-      path: cpuinfo.txt
+      path: .
+      include:
+        - cpuinfo.txt
+        - firecracker.stdout
+        - firecracker.stderr
