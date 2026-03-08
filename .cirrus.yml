@@ -1,0 +1,6 @@
+task:
+  name: KVM Probe (placeholder)
+  container:
+    image: alpine:3.21
+  script:
+    - echo "replace with VM task + /dev/kvm checks"
